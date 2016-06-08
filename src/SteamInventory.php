@@ -1,5 +1,9 @@
 <?php namespace Invisnik\LaravelSteamInventory;
 
+use Illuminate\Cache\CacheManager;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
+
 class SteamInventory {
 
     /**
