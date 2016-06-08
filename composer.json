@@ -1,0 +1,23 @@
+{
+    "name": "invisnik/laravel-steam-inventory",
+    "description": "Laravel Steam Inventory",
+    "keywords": ["steam", "laravel", "inventory", "steam inventory", "steam api"],
+    "homepage": "https://github.com/invisnik/laravel-steam-inventory",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Nikita Brytkov",
+            "email": "invis.nik@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "illuminate/support": "5.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Invisnik\\SteamInventory\\": "src"
+        }
+    },
+    "minimum-stability": "stable"
+}
