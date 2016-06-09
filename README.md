@@ -1,8 +1,8 @@
 # Steam Inventory parser for Laravel 5
-[![Latest Stable Version](https://poser.pugx.org/invisnik/laravel-steam-inventory/v/stable?format=flat-square)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
-[![Total Downloads](https://poser.pugx.org/invisnik/laravel-steam-inventory/downloads?format=flat-square)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
-[![License](https://poser.pugx.org/invisnik/laravel-steam-inventory/license?format=flat-square)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
-
+[![Code Climate](https://codeclimate.com/github/invisnik/laravel-steam-inventory/badges/gpa.svg)](https://codeclimate.com/github/invisnik/laravel-steam-inventory)
+[![Latest Stable Version](https://poser.pugx.org/invisnik/laravel-steam-inventory/v/stable?format=flat)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
+[![Total Downloads](https://poser.pugx.org/invisnik/laravel-steam-inventory/downloads?format=flat)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
+[![License](https://poser.pugx.org/invisnik/laravel-steam-inventory/license?format=flat)](https://packagist.org/packages/invisnik/laravel-steam-inventory)
 ## Installation Via Composer
 Add this to your `composer.json` file, in the require object:
 
