@@ -54,7 +54,7 @@ class SteamInventory {
         if ($this->cache->tags($this->cacheTag)->has($steamId)) {
             $this->currentData = $this->cache->tags($this->cacheTag)->get($steamId);
             // Return the cached data
-            return $this;
+            return $this->currentData;
         }
 
         $inventory = $this->getSteamInventory($steamId, $appId, $contextId);
@@ -68,7 +68,7 @@ class SteamInventory {
             return false;
         }
 
-        return $this;
+        return $this->currentData;
     }
 
     /**
