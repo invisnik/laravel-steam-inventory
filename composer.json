@@ -16,7 +16,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Invisnik\\SteamInventory\\": "src"
+            "Invisnik\\LaravelSteamInventory\\": "src"
         }
     },
     "minimum-stability": "stable"
