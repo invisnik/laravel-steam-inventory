@@ -26,11 +26,9 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider {
      */
     public function register()
     {
-        $this->app['steam-inventory'] = $this->app->share(
-            function () {
-                return new SteamInventory();
-            }
-        );
+        $this->app->singleton('steam-inventory', function () {
+            return new SteamInventory();
+        });
     }
 
 }
