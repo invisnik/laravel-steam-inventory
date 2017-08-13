@@ -1,5 +1,7 @@
 <?php namespace Invisnik\LaravelSteamInventory;
 
+use Illuminate\Cache\CacheManager;
+
 class ServiceProvider extends \Illuminate\Support\ServiceProvider {
 
     /**
@@ -27,7 +29,8 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider {
     public function register()
     {
         $this->app->singleton('steam-inventory', function () {
-            return new SteamInventory();
+            $cacheManager = new CacheManager($this->app);
+            return new SteamInventory($cacheManager);
         });
     }
 

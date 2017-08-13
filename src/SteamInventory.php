@@ -1,10 +1,14 @@
 <?php namespace Invisnik\LaravelSteamInventory;
 
+use Illuminate\Support\Facades\Config;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Cache\CacheManager;
 use Illuminate\Support\Collection;
+
 use InvalidArgumentException;
 
-class SteamInventory {
+class SteamInventory
+{
 
     /**
      * @var CacheManager $cache Caching layer
@@ -19,12 +23,12 @@ class SteamInventory {
     /**
      * @var integer $cacheTime Number of minutes to cache a Steam ID's inventory
      */
-    protected $cacheTime = 60;
+    protected $cacheTime;
 
     /**
      * @var string $cacheTag The Cache tag that will be used for all items
      */
-    protected $cacheTag = 'steam.inventory';
+    protected $cacheTag;
 
     /**
      * @var mixed The last inventory that was pulled
@@ -32,25 +36,42 @@ class SteamInventory {
     protected $currentData;
 
     /**
-     * SteamInventory constructor.
+     * @var string The user steamid
      */
-    public function __construct()
-    {
-        $this->cache = new CacheManager(app());
-        $this->collection = new Collection();
-    }
+    protected $steamid;
 
+    /**
+     * @var GuzzleClient
+     */
+    private $guzzleClient;
+
+    /**
+     * SteamInventory constructor.
+     * @param CacheManager $manager
+     */
+    public function __construct(CacheManager $manager)
+    {
+        $this->cache = $manager->driver();
+        $this->collection = new Collection();
+
+        $this->cacheTag = Config::get('steam-inventory.cache_tag');
+        $this->cacheTime = Config::get('steam-inventory.cache_time');
+
+        $this->guzzleClient  = new GuzzleClient;
+    }
 
     /**
      * Load the inventory for a Steam ID
      *
-     * @param  integer $steamId
-     * @param  integer $appId
-     * @param  integer $contextId
-     * @return Json
+     * @param integer $steamId
+     * @param int $appId
+     * @param int $contextId
+     * @return SteamInventory
      */
-    public function loadInventory($steamId, $appId = 730, $contextId = 2)
+    public function loadInventory($steamId, $appId = 730, $contextId = 2): SteamInventory
     {
+        $this->steamid = $steamId;
+
         if ($this->cache->tags($this->cacheTag)->has($steamId)) {
             $this->currentData = $this->cache->tags($this->cacheTag)->get($steamId);
             // Return the cached data
@@ -64,8 +85,6 @@ class SteamInventory {
             $this->cache->tags($this->cacheTag)->put($steamId, $inventory, $minutes);
 
             $this->currentData = $inventory;
-        } else {
-            return false;
         }
 
         return $this;
@@ -77,15 +96,17 @@ class SteamInventory {
      * @param  integer $steamId
      * @param  integer $appId
      * @param  integer $contextId
-     * @return Json
+     * @return array
      */
-    private function getSteamInventory($steamId, $appId, $contextId)
+    private function getSteamInventory($steamId, $appId, $contextId): array
     {
         $steamId = $this->cleanSteamId($steamId);
         $this->checkInfo($steamId, $appId, $contextId);
 
-        $url  = $this->steamApiUrl($steamId, $appId, $contextId);
-        $json = json_decode(@file_get_contents($url), true);
+        $url = $this->steamApiUrl($steamId, $appId, $contextId);
+
+        $response = $this->guzzleClient->get($url);
+        $json = json_decode($response->getBody(), true);
 
         return $json;
     }
@@ -97,14 +118,13 @@ class SteamInventory {
      * @param  integer $appId
      * @param  integer $contextId
      * @param  string $lang
-     * @param  bool $trading
+     * @param  bool $tradable
      * @return string
      */
-    private function steamApiUrl($steamId, $appId, $contextId, $lang = 'english', $trading = true)
+    private function steamApiUrl($steamId, $appId, $contextId, $lang = 'english', $tradable = true): string
     {
-        return 'http://steamcommunity.com/profiles/' . $steamId . '/inventory/json/' . $appId . '/' . $contextId . '/?l=' . $lang . '&trading=' . (int) $trading;
+        return 'http://steamcommunity.com/inventory/' . $steamId . '/' . $appId . '/' . $contextId . '?l=' . $lang . '&tradable=' . (int)$tradable;
     }
-
 
     /*
     |--------------------------------------------------------------------------
@@ -119,13 +139,13 @@ class SteamInventory {
      *
      * @return Collection
      */
-    public function getInventory()
+    public function getInventory(): Collection
     {
-        if (! $this->currentData) {
+        if (!$this->currentData) {
             return false;
         }
 
-        $data = array_get($this->currentData, 'rgInventory');
+        $data = array_get($this->currentData, 'assets');
 
         return $this->collection->make($data);
     }
@@ -135,13 +155,13 @@ class SteamInventory {
      *
      * @return Collection
      */
-    public function getDescriptions()
+    public function getDescriptions(): Collection
     {
-        if (! $this->currentData) {
+        if (!$this->currentData) {
             return false;
         }
 
-        $data = array_get($this->currentData, 'rgDescriptions', false);
+        $data = array_get($this->currentData, 'descriptions', false);
         $data = $this->collection->make($data);
 
         $items = $this->parseItemDescriptions($data);
@@ -149,15 +169,55 @@ class SteamInventory {
         return $items;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Description Builder
-    |--------------------------------------------------------------------------
-    |
-    |
-    */
+    /**
+     * Returns the current Inventory data with descriptions
+     * @param int $contextid
+     * @return Collection
+     */
+    public function getInventoryWithDescriptions($contextid = 2): Collection
+    {
+        if (!array_get($this->currentData, 'success')) {
+            return false;
+        }
 
-    public function parseItemDescriptions(Collection $data)
+        $inventory = array_get($this->currentData, 'assets');
+        $descriptions = array_get($this->currentData, 'descriptions');
+        $data = array_map(function ($item) use ($descriptions, $contextid) {
+            foreach ($descriptions as $desc) {
+                if ($desc['classid'] == $item['classid'] && $desc['instanceid'] == $item['instanceid']) {
+                    foreach ($desc as $key => $value) {
+                        if (isset($desc[$key])) {
+                            $item[$key] = $desc[$key];
+                        }
+                    }
+                }
+            }
+            $tags = $this->parseItemTags(array_get($item, 'tags'));
+            $item['tags'] = $tags;
+            $item['contextid'] = $contextid;
+            return $item;
+        }, $inventory);
+
+        $items = $this->collection->make($data);
+
+        return $items;
+
+    }
+
+    /**
+     * Clears the user inventory cache
+     * @param $steamid
+     */
+    public function clearCache($steamid): void
+    {
+        $this->cache->tags('steam.inventory')->forget($steamid);
+    }
+
+    /**
+     * @param Collection $data
+     * @return Collection
+     */
+    public function parseItemDescriptions(Collection $data): Collection
     {
         $items = $this->collection->make();
 
@@ -174,24 +234,24 @@ class SteamInventory {
             $name = trim(last(explode('|', array_get($dataItem, 'name'))));
             $desc = $this->parseItemDescription(array_get($dataItem, 'descriptions'));
             $tags = $this->parseItemTags(array_get($dataItem, 'tags'));
-            $cat  = array_get($tags, 'Category', '');
+            $cat = array_get($tags, 'Category', '');
 
             $array = [
-                'appid'           => array_get($dataItem, 'appid'),            // 730
-                'classid'         => array_get($dataItem, 'classid'),          // 310777928
-                'instanceid'      => array_get($dataItem, 'instanceid'),       // 480085569 or 0
-                'name'            => $name,                                     // Sand Dune
-                'market_name'     => array_get($dataItem, 'market_name'),      // P250 | Sand Dune (Field-Tested)
-                'weapon'          => array_get($tags, 'Weapon'),                // P250
-                'type'            => array_get($tags, 'Type'),                  // Pistol
-                'quality'         => array_get($tags, 'Quality'),               // Consumer Grade
-                'exterior'        => array_get($tags, 'Exterior'),              // Field-Tested
-                'collection'      => array_get($tags, 'Collection'),            // The Dust 2 Collection
-                'stattrack'       => (stripos($cat, 'StatTrak') !== false) ? true : false,
-                'icon_url'        => array_get($dataItem, 'icon_url'),         // fWFc82js0fmoRAP-qOIPu5THSWqfSmTEL ...
-                'icon_url_large'  => array_get($dataItem, 'icon_url_large'),   // fWFc82js0fmoRAP-qOIPu5THSWqfSmTEL ...
-                'description'     => $desc,
-                'name_color'      => '#' . array_get($dataItem, 'name_color'),
+                'appid' => array_get($dataItem, 'appid'),
+                'classid' => array_get($dataItem, 'classid'),
+                'instanceid' => array_get($dataItem, 'instanceid'),
+                'name' => $name,
+                'market_name' => array_get($dataItem, 'market_name'),
+                'weapon' => array_get($tags, 'Weapon'),
+                'type' => array_get($tags, 'Type'),
+                'quality' => array_get($tags, 'Quality'),
+                'exterior' => array_get($tags, 'Exterior'),
+                'collection' => array_get($tags, 'Collection'),
+                'stattrack' => (stripos($cat, 'StatTrak') !== false) ? true : false,
+                'icon_url' => array_get($dataItem, 'icon_url'),
+                'icon_url_large' => array_get($dataItem, 'icon_url_large'),
+                'description' => $desc,
+                'name_color' => '#' . array_get($dataItem, 'name_color'),
             ];
 
             $items->push(json_decode(json_encode($array)));
@@ -208,7 +268,7 @@ class SteamInventory {
      * @param  StdClass $description
      * @return string
      */
-    protected function parseItemDescription($description)
+    protected function parseItemDescription($description): string
     {
         $description = json_decode(json_encode($description), true);
 
@@ -218,20 +278,20 @@ class SteamInventory {
     /**
      * Parses an item's tags into a usable array
      *
-     * @param  array  $tags
+     * @param  array $tags
      * @return array
      */
-    protected function parseItemTags(array $tags)
+    protected function parseItemTags(array $tags): array
     {
-        if (! count($tags)) {
+        if (!count($tags)) {
             return [];
         }
 
         $parsed = [];
 
         foreach ($tags as $tag) {
-            $categoryName = array_get($tag, 'category_name');
-            $tagName = array_get($tag, 'name');
+            $categoryName = array_get($tag, 'category');
+            $tagName = array_get($tag, 'localized_tag_name');
 
             $parsed[$categoryName] = $tagName;
         }
@@ -256,11 +316,10 @@ class SteamInventory {
      * @param  integer $appId
      * @param  integer $contextId
      * @return bool
-     * @throws InvalidArgumentException
      */
-    protected function checkInfo($steamId, $appId, $contextId)
+    protected function checkInfo($steamId, $appId, $contextId): bool
     {
-        if (! is_numeric($steamId) || ! is_numeric($appId) || ! is_numeric($contextId)) {
+        if (!is_numeric($steamId) || !is_numeric($appId) || !is_numeric($contextId)) {
             throw new InvalidArgumentException('One or more variables are invalid: `steamId`, `appId`, `contextId`. They must be numeric!');
 
             return false;
@@ -273,9 +332,9 @@ class SteamInventory {
      * Prepares the Steam ID for usage against most copy/paste problems
      *
      * @param  string $steamId
-     * @return integer
+     * @return string
      */
-    protected function cleanSteamId($steamId)
+    protected function cleanSteamId($steamId): string
     {
         $steamId = trim($steamId);
 
@@ -289,10 +348,10 @@ class SteamInventory {
     /**
      * Convert a Steam ID to 64 bit, if it isn't already
      *
-     * @param  integer $steamId
-     * @return integer
+     * @param  string $steamId
+     * @return string
      */
-    protected function steamIdTo64($steamId)
+    protected function steamIdTo64($steamId): string
     {
         if (strlen($steamId) === 17) {
             return $steamId;
@@ -304,4 +363,5 @@ class SteamInventory {
 
         return $steamId;
     }
+
 }
