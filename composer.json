@@ -25,5 +25,12 @@
             "Invisnik\\LaravelSteamInventory\\": "src"
         }
     },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Invisnik\\LaravelSteamInventory\\ServiceProvider"
+            ]
+        }
+    },
     "minimum-stability": "stable"
 }
