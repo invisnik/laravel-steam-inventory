@@ -25,6 +25,7 @@ Add the service provider to `app/config/app.php`, within the `providers` array.
 	Invisnik\LaravelSteamInventory\ServiceProvider::class,
 ]
 ```
+The package is automatically added if you are in Laravel 5.5.
 
 #### Config Files
 
