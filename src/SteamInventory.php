@@ -57,7 +57,7 @@ class SteamInventory
         $this->cacheTag = Config::get('steam-inventory.cache_tag');
         $this->cacheTime = Config::get('steam-inventory.cache_time');
 
-        $this->guzzleClient  = new GuzzleClient;
+        $this->guzzleClient = new GuzzleClient;
     }
 
     /**
@@ -192,7 +192,7 @@ class SteamInventory
                     }
                 }
             }
-            $tags = $this->parseItemTags(array_get($item, 'tags'));
+            $tags = $this->parseItemTags(array_get($item, 'tags', []));
             $item['tags'] = $tags;
             $item['contextid'] = $contextid;
             return $item;
@@ -226,14 +226,9 @@ class SteamInventory
         }
 
         foreach ($data as $dataItem) {
-            // Ignore untradable items
-            if (array_get($dataItem, 'tradable') !== 1 || array_get($dataItem, 'instanceid') == 0) {
-                continue;
-            }
-
             $name = trim(last(explode('|', array_get($dataItem, 'name'))));
-            $desc = $this->parseItemDescription(array_get($dataItem, 'descriptions'));
-            $tags = $this->parseItemTags(array_get($dataItem, 'tags'));
+            $desc = $this->parseItemDescription(array_get($dataItem, 'descriptions', []));
+            $tags = $this->parseItemTags(array_get($dataItem, 'tags', []));
             $cat = array_get($tags, 'Category', '');
 
             $array = [
