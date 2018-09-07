@@ -7,5 +7,9 @@ return [
     /*
      * The Cache tag that will be used for all items
      */
-    'cache_tag' => 'steam.inventory'
+    'cache_tag' => 'steam.inventory',
+    /*
+     * Items language
+     */
+    'language' => 'english'
 ];

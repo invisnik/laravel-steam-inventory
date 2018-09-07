@@ -31,6 +31,11 @@ class SteamInventory
     protected $cacheTag;
 
     /**
+     * @var string $language
+     */
+    protected $language;
+
+    /**
      * @var mixed The last inventory that was pulled
      */
     protected $currentData;
@@ -54,8 +59,9 @@ class SteamInventory
         $this->cache = $manager->driver();
         $this->collection = new Collection();
 
-        $this->cacheTag = Config::get('steam-inventory.cache_tag');
-        $this->cacheTime = Config::get('steam-inventory.cache_time');
+        $this->cacheTag = Config::get('steam-inventory.cache_tag', 'steam.inventory');
+        $this->cacheTime = Config::get('steam-inventory.cache_time', 60);
+        $this->language = Config::get('steam-inventory.language', 'english');
 
         $this->guzzleClient = new GuzzleClient;
     }
@@ -78,7 +84,7 @@ class SteamInventory
             return $this;
         }
 
-        $inventory = $this->getSteamInventory($steamId, $appId, $contextId);
+        $inventory = $this->getSteamInventory($steamId, $appId, $contextId, $this->language);
 
         if (is_array($inventory)) {
             $minutes = $this->cacheTime;
@@ -96,14 +102,15 @@ class SteamInventory
      * @param  integer $steamId
      * @param  integer $appId
      * @param  integer $contextId
+     * @param  string $lang
      * @return array
      */
-    private function getSteamInventory($steamId, $appId, $contextId): array
+    private function getSteamInventory($steamId, $appId, $contextId, $lang): array
     {
         $steamId = $this->cleanSteamId($steamId);
         $this->checkInfo($steamId, $appId, $contextId);
 
-        $url = $this->steamApiUrl($steamId, $appId, $contextId);
+        $url = $this->steamApiUrl($steamId, $appId, $contextId, $lang);
 
         $response = $this->guzzleClient->get($url);
         $json = json_decode($response->getBody(), true);
