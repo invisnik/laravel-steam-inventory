@@ -1,5 +1,6 @@
 <?php namespace Invisnik\LaravelSteamInventory;
 
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Cache\CacheManager;
@@ -152,7 +153,7 @@ class SteamInventory
             return false;
         }
 
-        $data = array_get($this->currentData, 'assets');
+        $data = Arr::get($this->currentData, 'assets');
 
         return $this->collection->make($data);
     }
@@ -168,7 +169,7 @@ class SteamInventory
             return false;
         }
 
-        $data = array_get($this->currentData, 'descriptions', false);
+        $data = Arr::get($this->currentData, 'descriptions', false);
         $data = $this->collection->make($data);
 
         $items = $this->parseItemDescriptions($data);
@@ -183,12 +184,12 @@ class SteamInventory
      */
     public function getInventoryWithDescriptions($contextid = 2): Collection
     {
-        if (!array_get($this->currentData, 'success')) {
+        if (!Arr::get($this->currentData, 'success')) {
             return false;
         }
 
-        $inventory = array_get($this->currentData, 'assets');
-        $descriptions = array_get($this->currentData, 'descriptions');
+        $inventory = Arr::get($this->currentData, 'assets');
+        $descriptions = Arr::get($this->currentData, 'descriptions');
         $data = array_map(function ($item) use ($descriptions, $contextid) {
             foreach ($descriptions as $desc) {
                 if ($desc['classid'] == $item['classid'] && $desc['instanceid'] == $item['instanceid']) {
@@ -199,7 +200,7 @@ class SteamInventory
                     }
                 }
             }
-            $tags = $this->parseItemTags(array_get($item, 'tags', []));
+            $tags = $this->parseItemTags(Arr::get($item, 'tags', []));
             $item['tags'] = $tags;
             $item['contextid'] = $contextid;
             return $item;
@@ -233,27 +234,27 @@ class SteamInventory
         }
 
         foreach ($data as $dataItem) {
-            $name = trim(last(explode('|', array_get($dataItem, 'name'))));
-            $desc = $this->parseItemDescription(array_get($dataItem, 'descriptions', []));
-            $tags = $this->parseItemTags(array_get($dataItem, 'tags', []));
-            $cat = array_get($tags, 'Category', '');
+            $name = trim(last(explode('|', Arr::get($dataItem, 'name'))));
+            $desc = $this->parseItemDescription(Arr::get($dataItem, 'descriptions', []));
+            $tags = $this->parseItemTags(Arr::get($dataItem, 'tags', []));
+            $cat = Arr::get($tags, 'Category', '');
 
             $array = [
-                'appid' => array_get($dataItem, 'appid'),
-                'classid' => array_get($dataItem, 'classid'),
-                'instanceid' => array_get($dataItem, 'instanceid'),
+                'appid' => Arr::get($dataItem, 'appid'),
+                'classid' => Arr::get($dataItem, 'classid'),
+                'instanceid' => Arr::get($dataItem, 'instanceid'),
                 'name' => $name,
-                'market_name' => array_get($dataItem, 'market_name'),
-                'weapon' => array_get($tags, 'Weapon'),
-                'type' => array_get($tags, 'Type'),
-                'quality' => array_get($tags, 'Quality'),
-                'exterior' => array_get($tags, 'Exterior'),
-                'collection' => array_get($tags, 'Collection'),
+                'market_name' => Arr::get($dataItem, 'market_name'),
+                'weapon' => Arr::get($tags, 'Weapon'),
+                'type' => Arr::get($tags, 'Type'),
+                'quality' => Arr::get($tags, 'Quality'),
+                'exterior' => Arr::get($tags, 'Exterior'),
+                'collection' => Arr::get($tags, 'Collection'),
                 'stattrack' => (stripos($cat, 'StatTrak') !== false) ? true : false,
-                'icon_url' => array_get($dataItem, 'icon_url'),
-                'icon_url_large' => array_get($dataItem, 'icon_url_large'),
+                'icon_url' => Arr::get($dataItem, 'icon_url'),
+                'icon_url_large' => Arr::get($dataItem, 'icon_url_large'),
                 'description' => $desc,
-                'name_color' => '#' . array_get($dataItem, 'name_color'),
+                'name_color' => '#' . Arr::get($dataItem, 'name_color'),
             ];
 
             $items->push(json_decode(json_encode($array)));
@@ -274,7 +275,7 @@ class SteamInventory
     {
         $description = json_decode(json_encode($description), true);
 
-        return trim(array_get($description, '2.value'));
+        return trim(Arr::get($description, '2.value'));
     }
 
     /**
@@ -292,8 +293,8 @@ class SteamInventory
         $parsed = [];
 
         foreach ($tags as $tag) {
-            $categoryName = array_get($tag, 'category');
-            $tagName = array_get($tag, 'localized_tag_name');
+            $categoryName = Arr::get($tag, 'category');
+            $tagName = Arr::get($tag, 'localized_tag_name');
 
             $parsed[$categoryName] = $tagName;
         }
